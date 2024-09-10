@@ -1,4 +1,4 @@
-Image Management System
+<h2>Image Management System</h2>
 This project is an Image Management System built with Vue.js for the frontend and ASP.NET Core for the backend API. The system allows users to add, edit, delete, and view images. The backend interacts with a PostgreSQL database using Npgsql for database operations, and the frontend communicates with the backend via Fetch API.
 
 Features
