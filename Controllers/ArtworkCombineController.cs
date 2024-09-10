@@ -86,6 +86,7 @@ namespace ArtworkCore.Controllers
         [HttpPost("post")]
         public IActionResult Post(PostRequest request)
         {
+            string newImageId = Guid.NewGuid().ToString();
             string message = string.Empty;
             DataTable dt = new();
             List<NpgsqlParameter> list_param = new();
@@ -99,6 +100,11 @@ namespace ArtworkCore.Controllers
                 {
                     case "sfw_art":
                         var sfw_art = JsonConvert.DeserializeObject<SfwArt>(request.Data.ToString());
+                        if(sfw_art == null)
+                            return BadRequest("Invalid data");
+
+                        sfw_art.Id = newImageId;
+
                         list_param.Add(_db_action.ParamMaker("id", sfw_art.Id, DbType.String));
                         list_param.Add(_db_action.ParamMaker("img_url", sfw_art.ImgUrl, DbType.String));
                         list_param.Add(_db_action.ParamMaker("img_name", sfw_art.ImgName, DbType.String));
@@ -118,13 +124,18 @@ namespace ArtworkCore.Controllers
                         break;
 
                     case "nsfw_art":
-                        var nsfw_art = JsonConvert.DeserializeObject<SfwArt>(request.Data.ToString());
-                        list_param.Add(_db_action.ParamMaker("id", nsfw_art.Id, DbType.String));
-                        list_param.Add(_db_action.ParamMaker("img_nsfw_url", nsfw_art.ImgUrl, DbType.String));
-                        list_param.Add(_db_action.ParamMaker("img_nsfw_name", nsfw_art.ImgName, DbType.String));
-                        list_param.Add(_db_action.ParamMaker("img_nsfw_describe", nsfw_art.ImgDescribe, DbType.String));
+                        var nsfw_art = JsonConvert.DeserializeObject<NsfwArt>(request.Data.ToString());
+                        if (nsfw_art == null)
+                            return BadRequest("Invalid data");
 
-                        string nsfw_art_query = $"INSERT INTO  master.sfw_art (id, img_nsfw_url, img_nsfw_name, img_nsfw_describe)VALUES(:id, :img_nsfw_url, :img_nsfw_name, :img_nsfw_describe);";
+                        nsfw_art.Id = newImageId;
+
+                        list_param.Add(_db_action.ParamMaker("id", nsfw_art.Id, DbType.String));
+                        list_param.Add(_db_action.ParamMaker("img_nsfw_url", nsfw_art.ImgNsfwUrl, DbType.String));
+                        list_param.Add(_db_action.ParamMaker("img_nsfw_name", nsfw_art.ImgNsfwName, DbType.String));
+                        list_param.Add(_db_action.ParamMaker("img_nsfw_describe", nsfw_art.ImgNsfwDescribe, DbType.String));
+
+                        string nsfw_art_query = $"INSERT INTO master.nsfw_art (id, img_nsfw_url, img_nsfw_name, img_nsfw_describe)VALUES(:id, :img_nsfw_url, null, null);";
                         using (NpgsqlCommand cmd = new NpgsqlCommand(nsfw_art_query, _connect))
                         {
                             foreach (NpgsqlParameter param in list_param)
@@ -136,6 +147,9 @@ namespace ArtworkCore.Controllers
 
                         message = "Insert image successfully";
                         break;
+
+                    default:
+                        return BadRequest("Unknow type");
                 }
 
                 _connect.Close();
@@ -143,8 +157,9 @@ namespace ArtworkCore.Controllers
             catch (Exception ex) 
             {
                 message = "Insert image failed\n\r" + ex;
+                return StatusCode(500, new { message });
             }
-            return Ok(message);
+            return Ok(new { message, id = newImageId });
         }
         #endregion
 
@@ -166,7 +181,7 @@ namespace ArtworkCore.Controllers
                         var sfw_art = JsonConvert.DeserializeObject<SfwArt>(request.Data.ToString());
                         list_param.Add(_db_action.ParamMaker("id", sfw_art.Id, DbType.String));
                         list_param.Add(_db_action.ParamMaker("img_url", sfw_art.ImgUrl, DbType.String));
-                        list_param.Add(_db_action.ParamMaker("img_name", sfw_art.ImgUrl, DbType.String));
+                        list_param.Add(_db_action.ParamMaker("img_name", sfw_art.ImgName, DbType.String));
                         list_param.Add(_db_action.ParamMaker("img_describe", sfw_art.ImgDescribe, DbType.String));
 
                         string sfw_art_query = $"UPDATE master.sfw_art SET img_url = :img_url, img_name = :img_name, img_describe = :img_describe WHERE id = :id;";
@@ -183,11 +198,11 @@ namespace ArtworkCore.Controllers
                         break;
 
                     case "nsfw_art":
-                        var nsfw_art = JsonConvert.DeserializeObject<SfwArt>(request.Data.ToString());
+                        var nsfw_art = JsonConvert.DeserializeObject<NsfwArt>(request.Data.ToString());
                         list_param.Add(_db_action.ParamMaker("id", nsfw_art.Id, DbType.String));
-                        list_param.Add(_db_action.ParamMaker("img_nsfw_url", nsfw_art.ImgUrl, DbType.String));
-                        list_param.Add(_db_action.ParamMaker("img_nsfw_name", nsfw_art.ImgUrl, DbType.String));
-                        list_param.Add(_db_action.ParamMaker("img_nsfw_describe", nsfw_art.ImgDescribe, DbType.String));
+                        list_param.Add(_db_action.ParamMaker("img_nsfw_url", nsfw_art.ImgNsfwUrl, DbType.String));
+                        list_param.Add(_db_action.ParamMaker("img_nsfw_name", nsfw_art.ImgNsfwName, DbType.String));
+                        list_param.Add(_db_action.ParamMaker("img_nsfw_describe", nsfw_art.ImgNsfwDescribe, DbType.String));
 
                         string nsfw_art_query = $"UPDATE master.nsfw_art SET img_nsfw_url = :img_nsfw_url, img_nsfw_name = :img_nsfw_name, img_nsfw_describe = :img_nsfw_describe WHERE id = :id;";
                         using (NpgsqlCommand cmd = new NpgsqlCommand(nsfw_art_query, _connect))
