@@ -1,6 +1,7 @@
 using ArtworkCore.Class;
 using ArtworkCore.Models;
 using ArtworkCore.Services.DBconnect;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -25,6 +26,7 @@ namespace ArtworkCore.Controllers
 
         #region Get
         [HttpGet]
+        [Authorize(Roles = "admin, user")]
         public IActionResult Get()
         {
             DataTable dt = new();
@@ -84,6 +86,7 @@ namespace ArtworkCore.Controllers
 
         #region Post
         [HttpPost("post")]
+        [Authorize(Roles = "admin")]
         public IActionResult Post(PostRequest request)
         {
             string newImageId = Guid.NewGuid().ToString();
@@ -164,8 +167,9 @@ namespace ArtworkCore.Controllers
         #endregion
 
         #region Put
-        [HttpPut("put")]
-        public IActionResult Put(PutRequest request)
+        [HttpPut("put/{id}")]
+        [Authorize(Roles = "admin")]
+        public IActionResult Put(string id, PutRequest request)
         {
             string message = string.Empty;
             DataTable dt = new();
@@ -179,7 +183,7 @@ namespace ArtworkCore.Controllers
                 {
                     case "sfw_art":
                         var sfw_art = JsonConvert.DeserializeObject<SfwArt>(request.Data.ToString());
-                        list_param.Add(_db_action.ParamMaker("id", sfw_art.Id, DbType.String));
+                        list_param.Add(_db_action.ParamMaker("id", id, DbType.String));
                         list_param.Add(_db_action.ParamMaker("img_url", sfw_art.ImgUrl, DbType.String));
                         list_param.Add(_db_action.ParamMaker("img_name", sfw_art.ImgName, DbType.String));
                         list_param.Add(_db_action.ParamMaker("img_describe", sfw_art.ImgDescribe, DbType.String));
@@ -199,7 +203,7 @@ namespace ArtworkCore.Controllers
 
                     case "nsfw_art":
                         var nsfw_art = JsonConvert.DeserializeObject<NsfwArt>(request.Data.ToString());
-                        list_param.Add(_db_action.ParamMaker("id", nsfw_art.Id, DbType.String));
+                        list_param.Add(_db_action.ParamMaker("id", id, DbType.String));
                         list_param.Add(_db_action.ParamMaker("img_nsfw_url", nsfw_art.ImgNsfwUrl, DbType.String));
                         list_param.Add(_db_action.ParamMaker("img_nsfw_name", nsfw_art.ImgNsfwName, DbType.String));
                         list_param.Add(_db_action.ParamMaker("img_nsfw_describe", nsfw_art.ImgNsfwDescribe, DbType.String));
@@ -222,15 +226,17 @@ namespace ArtworkCore.Controllers
             }
             catch (Exception ex) 
             {
-                message = "Insert image failed\n\r" + ex;
+                message = "Update image failed\n\r" + ex;
+                return StatusCode(500, new { message });
             }
 
-            return Ok(message);
+            return Ok(new{message});
         }
         #endregion
 
         #region Delete
         [HttpDelete("del")]
+        [Authorize(Roles = "admin")]
         public IActionResult Delete(DeleteRequest request)
         {
             string message = string.Empty;
