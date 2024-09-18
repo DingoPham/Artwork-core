@@ -7,6 +7,10 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Npgsql;
 using System.Data;
+using System.Security.Claims;
+using System.Text;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
 
 namespace ArtworkCore.Controllers
 {
@@ -26,7 +30,7 @@ namespace ArtworkCore.Controllers
 
         #region Get
         [HttpGet]
-        [Authorize(Roles = "admin, user")]
+        [AllowAnonymous]
         public IActionResult Get()
         {
             DataTable dt = new();
@@ -292,6 +296,145 @@ namespace ArtworkCore.Controllers
             }
 
             return Ok(message);
+        }
+        #endregion
+
+        #region Login
+        [HttpPost("login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        {
+            if(request == null)
+            {
+                return BadRequest(new { message = "Request body can't be null " });
+            }
+
+            if (string.IsNullOrEmpty(request.UserName) || string.IsNullOrEmpty(request.Password))
+            {
+                return BadRequest(new { message = "Username and password cannot be empty" });
+            }
+
+            DataTable dt = new();
+            List<NpgsqlParameter> list_param = new();
+            NpgsqlConnection _connect = _db_action.Connection();
+
+            try
+            {
+                _connect.Open();
+
+                string query = "SELECT * FROM master.account WHERE username = :username AND password = :password;";
+                list_param.Add(_db_action.ParamMaker("username", request.UserName, DbType.String));
+                list_param.Add(_db_action.ParamMaker("password", request.Password, DbType.String));
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, _connect))
+                {
+                    foreach (var param in list_param)
+                    {
+                        cmd.Parameters.Add(param);
+                    }
+                    NpgsqlDataReader reader = cmd.ExecuteReader();
+                    dt.Load(reader);
+                }
+
+                if (dt.Rows.Count == 0)
+                {
+                    return Unauthorized(new { message = "Invalid username or password" });
+                }
+
+                string token = GenerateJwtToken(request.UserName);
+                return Ok(new { message = "Login successful!", 
+                                token = token, 
+                                username = dt.Rows[0]["username"].ToString(),
+                                role = dt.Rows[0]["role"].ToString(),
+                });
+            }
+            catch (Exception ex) { 
+                return StatusCode(500, new {message = "Login failed", error = ex.Message });
+            }
+            finally
+            {
+                _connect.Close();
+            }
+        }
+        #endregion
+
+        #region Register
+        [HttpPost("register")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        {
+            DataTable dt = new();
+            List<NpgsqlParameter> list_param = new();
+            NpgsqlConnection _connect = _db_action.Connection();
+            
+            try
+            {
+                _connect.Open();
+
+                string newAccountId = Guid.NewGuid().ToString();
+
+                list_param.Add(_db_action.ParamMaker("id", newAccountId, DbType.String));
+                list_param.Add(_db_action.ParamMaker("email", request.Email, DbType.String));
+                list_param.Add(_db_action.ParamMaker("username", request.Username, DbType.String));
+                list_param.Add(_db_action.ParamMaker("password", request.Password, DbType.String));
+                list_param.Add(_db_action.ParamMaker("age", request.Age, DbType.Int16));
+                list_param.Add(_db_action.ParamMaker("role", request.Role, DbType.String));
+
+                string query = "INSERT INTO master.account (id, email, username, password, age, role) VALUES (:id, :email, :username, :password, :age, :role);";
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, _connect))
+                {
+                    foreach (NpgsqlParameter param in list_param)
+                    {
+                        cmd.Parameters.Add(param);
+                    }
+                    cmd.ExecuteNonQuery();
+                }
+
+                _connect.Close();
+                return Ok(new { message = "Registration successful" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Registration failed", error = ex.Message });
+            }
+        }
+        #endregion
+
+        #region Forgot password
+        [HttpPost("forget-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Forget([FromBody] ForgetPRequest request)
+        {
+            NpgsqlConnection _connect = _db_action.Connection();
+            DataTable dt = new();
+            List<NpgsqlParameter> list_param = new();
+
+            return Ok(new { message = "Account recover successful" });
+        }
+        #endregion
+
+        #region login token
+        private string GenerateJwtToken(string username)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:SecretKey"]);
+
+            if (key == null || key.Length == 0)
+            {
+                throw new Exception("JWT Secret Key is not configured.");
+            }
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+                    new Claim("username", username)
+                }),
+                Expires = DateTime.UtcNow.AddHours(1),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
         }
         #endregion
     }
