@@ -134,3 +134,6 @@ _NCrunch*
 
 # Local settng 
 local.setting.json
+
+# Mail service
+EmailService.cs

@@ -1,4 +1,4 @@
-using ArtworkCore.Class;
+﻿using ArtworkCore.Class;
 using ArtworkCore.Models;
 using ArtworkCore.Services.DBconnect;
 using Microsoft.AspNetCore.Authorization;
@@ -11,6 +11,7 @@ using System.Security.Claims;
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
+using ArtworkCore.Services;
 
 namespace ArtworkCore.Controllers
 {
@@ -18,14 +19,16 @@ namespace ArtworkCore.Controllers
     [Route("[controller]")]
     public class ArtworkCombineController : ControllerBase
     {
+        private readonly EmailService _emailService;
         private readonly ILogger<ArtworkCombineController> _logger;
         private IConfiguration _configuration;
         private IPostgresSQL_Connection _db_action;
-        public ArtworkCombineController(ILogger<ArtworkCombineController> logger, IConfiguration configuration, IPostgresSQL_Connection db_action)
+        public ArtworkCombineController(ILogger<ArtworkCombineController> logger, IConfiguration configuration, IPostgresSQL_Connection db_action, EmailService emailService)
         {
             _db_action = db_action;
             _configuration = configuration;
             _logger = logger;
+            _emailService = emailService;
         }
 
         #region Get
@@ -338,18 +341,18 @@ namespace ArtworkCore.Controllers
 
                 if (dt.Rows.Count == 0)
                 {
-                    return Unauthorized(new { message = "Invalid username or password" });
+                    return Unauthorized(new { loginMessage = "Invalid username or password" });
                 }
 
                 string token = GenerateJwtToken(request.UserName);
-                return Ok(new { message = "Login successful!", 
+                return Ok(new { loginMessage = "Login Successful!", 
                                 token = token, 
                                 username = dt.Rows[0]["username"].ToString(),
                                 role = dt.Rows[0]["role"].ToString(),
                 });
             }
             catch (Exception ex) { 
-                return StatusCode(500, new {message = "Login failed", error = ex.Message });
+                return StatusCode(500, new {loginMessage = "Login Failed...", error = ex.Message });
             }
             finally
             {
@@ -391,11 +394,11 @@ namespace ArtworkCore.Controllers
                 }
 
                 _connect.Close();
-                return Ok(new { message = "Registration successful" });
+                return Ok(new { registerMessage = "Registration successful" });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Registration failed", error = ex.Message });
+                return StatusCode(500, new { registerMessage = "Registration Failed...", error = ex.Message });
             }
         }
         #endregion
@@ -405,15 +408,97 @@ namespace ArtworkCore.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Forget([FromBody] ForgetPRequest request)
         {
+            // Kiểm tra xem email có được nhập không
+            if (string.IsNullOrEmpty(request.Email))
+            {
+                return BadRequest( new {message = "Email is required"});
+            }
+
+
             NpgsqlConnection _connect = _db_action.Connection();
             DataTable dt = new();
             List<NpgsqlParameter> list_param = new();
 
-            return Ok(new { message = "Account recover successful" });
+            try
+            {
+                // Kết nối với cơ sở dữ liệu và kiểm tra xem email có tồn tại không
+                _connect.Open();
+
+                string query = "SELECT * FROM master.account WHERE email = :email;";
+                list_param.Add(_db_action.ParamMaker("email", request.Email, DbType.String));
+
+                using (var cmd = new NpgsqlCommand(query, _connect))
+                {
+                    foreach (NpgsqlParameter param in list_param)
+                    {
+                        cmd.Parameters.Add(param);
+                    }
+
+                    NpgsqlDataReader reader = cmd.ExecuteReader();
+                    dt.Load(reader);
+                }
+
+                // Nếu không tìm thấy email, trả về lỗi NotFound
+                if (dt.Rows.Count == 0)
+                {
+                    return NotFound(new { message = "Email not found" });
+                }
+
+                string baseUrl;
+
+                // Kiểm tra môi trường
+                if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+                {
+                    baseUrl = "http://localhost:8080";
+                }
+                else
+                {
+                    baseUrl = "https://exemple.com";
+                }
+
+                // Nếu tìm thấy email, tạo một token khôi phục mật khẩu
+                string resetToken = Guid.NewGuid().ToString();
+                string resetUrl = $"{baseUrl}/new-password?token={resetToken}";
+
+                // Gửi email khôi phục mật khẩu
+                string subject = "Reset Your Password";
+                string body = $"Click the link to reset your password: <a href='{resetUrl}'>Reset Password</a>";
+
+                // Gọi phương thức gửi email qua dịch vụ EmailService
+                await _emailService.SendAsync(request.Email, subject, body);
+
+                // Thông báo thành công khi gửi email khôi phục
+                return Ok(new { message = "Recovery notification sent"});
+            }
+
+            catch (Exception ex) 
+            {
+                // Nếu có lỗi trong quá trình xử lý, trả về mã lỗi 500
+                return StatusCode(500, new { message = "Failed to send recovery information"});
+            }
+            finally
+            {
+                // Đóng kết nối cơ sở dữ liệu
+                _connect.Close(); 
+            }
+           
         }
         #endregion
 
-        #region login token
+        //#region Reset password
+        //[HttpPost("reset-password")]
+        //[AllowAnonymous]
+        //public async Task<IActionResult> ResetPassword([FromBody] ResetRequest request)
+        //{
+        //    NpgsqlConnection _connect = _db_action.Connection();
+        //    DataTable dt = new();
+        //    List<NpgsqlParameter> list_param = new();
+
+
+        //}
+        //#endregion
+
+        #region Generate login token
         private string GenerateJwtToken(string username)
         {
             var tokenHandler = new JwtSecurityTokenHandler();

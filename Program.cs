@@ -1,4 +1,5 @@
 
+using ArtworkCore.Services;
 using ArtworkCore.Services.DBconnect;
 
 namespace ArtworkCore
@@ -35,6 +36,9 @@ namespace ArtworkCore
             {
                 return db_connect;
             });
+
+            builder.Services.AddSingleton<EmailService>();
+
             var app = builder.Build();
 
             app.UseCors("Dingo_Pham2003");
