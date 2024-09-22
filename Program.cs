@@ -23,7 +23,7 @@ namespace ArtworkCore
 
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("Dingo_Pham2003",
+                options.AddPolicy("AllowAllOrigins",
                 builder =>
                 {
                     builder.AllowAnyOrigin()
@@ -41,7 +41,7 @@ namespace ArtworkCore
 
             var app = builder.Build();
 
-            app.UseCors("Dingo_Pham2003");
+            app.UseCors("AllowAllOrigins");
 
             app.UseAuthorization();
 

@@ -302,14 +302,14 @@ namespace ArtworkCore.Controllers
         }
         #endregion
 
-        #region Login
+        #region Login 
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             if(request == null)
             {
-                return BadRequest(new { message = "Request body can't be null " });
+                return BadRequest(new { message = "Request body can't be null" });
             }
 
             if (string.IsNullOrEmpty(request.UserName) || string.IsNullOrEmpty(request.Password))
@@ -325,7 +325,7 @@ namespace ArtworkCore.Controllers
             {
                 _connect.Open();
 
-                string query = "SELECT * FROM master.account WHERE username = :username AND password = :password;";
+                string query = $"SELECT * FROM master.account WHERE username = :username AND password = :password;";
                 list_param.Add(_db_action.ParamMaker("username", request.UserName, DbType.String));
                 list_param.Add(_db_action.ParamMaker("password", request.Password, DbType.String));
 
@@ -345,6 +345,7 @@ namespace ArtworkCore.Controllers
                 }
 
                 string token = GenerateJwtToken(request.UserName);
+                
                 return Ok(new { loginMessage = "Login Successful!", 
                                 token = token, 
                                 username = dt.Rows[0]["username"].ToString(),
@@ -366,6 +367,13 @@ namespace ArtworkCore.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
+            if (string.IsNullOrEmpty(request.Email) ||
+            string.IsNullOrEmpty(request.Username) ||
+            string.IsNullOrEmpty(request.Password) ||
+            request.Age <= 0)
+            {
+                return BadRequest(new { registerMessage = "All fields are required and age must be greater than 0" });
+            }
             DataTable dt = new();
             List<NpgsqlParameter> list_param = new();
             NpgsqlConnection _connect = _db_action.Connection();
@@ -383,7 +391,7 @@ namespace ArtworkCore.Controllers
                 list_param.Add(_db_action.ParamMaker("age", request.Age, DbType.Int16));
                 list_param.Add(_db_action.ParamMaker("role", request.Role, DbType.String));
 
-                string query = "INSERT INTO master.account (id, email, username, password, age, role) VALUES (:id, :email, :username, :password, :age, :role);";
+                string query = $"INSERT INTO master.account (id, email, username, password, age, role) VALUES (:id, :email, :username, :password, :age, :role);";
                 using (NpgsqlCommand cmd = new NpgsqlCommand(query, _connect))
                 {
                     foreach (NpgsqlParameter param in list_param)
@@ -394,7 +402,7 @@ namespace ArtworkCore.Controllers
                 }
 
                 _connect.Close();
-                return Ok(new { registerMessage = "Registration successful" });
+                return Ok(new { registerMessage = "Registration Successful!" });
             }
             catch (Exception ex)
             {
@@ -424,8 +432,9 @@ namespace ArtworkCore.Controllers
                 // Kết nối với cơ sở dữ liệu và kiểm tra xem email có tồn tại không
                 _connect.Open();
 
-                string query = "SELECT * FROM master.account WHERE email = :email;";
                 list_param.Add(_db_action.ParamMaker("email", request.Email, DbType.String));
+
+                string query = $"SELECT * FROM master.account WHERE email = :email;";
 
                 using (var cmd = new NpgsqlCommand(query, _connect))
                 {
@@ -453,11 +462,22 @@ namespace ArtworkCore.Controllers
                 }
                 else
                 {
-                    baseUrl = "https://exemple.com";
+                    baseUrl = "https://exemple.com"; // chưa có public
                 }
 
                 // Nếu tìm thấy email, tạo một token khôi phục mật khẩu
                 string resetToken = Guid.NewGuid().ToString();
+                DateTime tokenExpiration = DateTime.UtcNow.AddMinutes(30);
+
+                string updateTokenQuery = $"UPDATE master.account SET reset_token = @reset, token_expiration = @expiration WHERE email = @Email;";
+                using (var cmd = new NpgsqlCommand(updateTokenQuery, _connect))
+                {
+                    cmd.Parameters.AddWithValue("@reset", resetToken);
+                    cmd.Parameters.AddWithValue("@expiration", tokenExpiration);
+                    cmd.Parameters.AddWithValue("@Email", request.Email);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
                 string resetUrl = $"{baseUrl}/new-password?token={resetToken}";
 
                 // Gửi email khôi phục mật khẩu
