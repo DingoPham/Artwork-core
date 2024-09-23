@@ -436,6 +436,7 @@ namespace ArtworkCore.Controllers
                 list_param.Add(_db_action.ParamMaker("email", request.Email, DbType.String));
 
                 string query = $"SELECT * FROM master.account WHERE email = :email;";
+                string userName = string.Empty;
 
                 using (var cmd = new NpgsqlCommand(query, _connect))
                 {
@@ -449,7 +450,11 @@ namespace ArtworkCore.Controllers
                 }
 
                 // Nếu không tìm thấy email, trả về lỗi NotFound
-                if (dt.Rows.Count == 0)
+                if (dt.Rows.Count > 0)
+                {
+                    userName = dt.Rows[0]["username"].ToString();
+                }
+                else
                 {
                     return NotFound(new { message = "Email not found" });
                 }
@@ -483,13 +488,25 @@ namespace ArtworkCore.Controllers
 
                 // Gửi email khôi phục mật khẩu
                 string subject = "Reset Your Password";
-                string body = $"Click the link to reset your password: <a href='{resetUrl}'>Reset Password</a>";
+                // body làm đẹp thư gửi đi
+                string body = $@"
+                    <div style='font-family: Arial, sans-serif; font-size: 16px; color: #333;'>
+                        <h2 style='color: #2e6c80;'>Password Reset Request</h2>
+                        <p>Dear {userName},</p>
+                        <p>We received a request to reset your password. Click the button below to reset your password:</p>
+                        <a href='{resetUrl}' style='display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;'>Reset Password</a>
+                        <p>If you did not request a password reset, please ignore this email.</p>
+                        <br/>
+                        <p style='font-size: 12px; color: #777;'>If you're having trouble clicking the button, copy and paste the URL below into your web browser:</p>
+                        <p style='font-size: 12px; color: #777;'>{resetUrl}</p>
+                    </div>
+                    Click the link to reset your password: <a href='{resetUrl}'>Reset Password</a>";
 
                 // Gọi phương thức gửi email qua dịch vụ EmailService
                 await _emailService.SendAsync(request.Email, subject, body);
 
                 // Thông báo thành công khi gửi email khôi phục
-                return Ok(new { message = "Recovery notification sent"});
+                return Ok(new { forgetMessage = "Recovery notification sent" });
 
             }
 
@@ -497,7 +514,7 @@ namespace ArtworkCore.Controllers
             {
                 Console.WriteLine(ex.ToString());
                 // Nếu có lỗi trong quá trình xử lý, trả về mã lỗi 500
-                return StatusCode(500, new { message = $"Failed to send recovery information: {ex.Message}"});
+                return StatusCode(500, new { forgetMessage = $"Failed to send recovery information: {ex.Message}"});
             }
             finally
             {
