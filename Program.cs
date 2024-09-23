@@ -37,6 +37,8 @@ namespace ArtworkCore
                 return db_connect;
             });
 
+            builder.Services.AddScoped<ArtworkCore.Services.EmailService>();
+
             builder.Services.AddSingleton<EmailService>();
 
             var app = builder.Build();

@@ -137,3 +137,9 @@ local.setting.json
 
 # Mail service
 EmailService.cs
+
+# vs Folder
+.vs
+
+# launch setting
+launchSetting.json

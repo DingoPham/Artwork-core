@@ -12,6 +12,7 @@ using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using ArtworkCore.Services;
+using System.ComponentModel.DataAnnotations;
 
 namespace ArtworkCore.Controllers
 {
@@ -489,12 +490,14 @@ namespace ArtworkCore.Controllers
 
                 // Thông báo thành công khi gửi email khôi phục
                 return Ok(new { message = "Recovery notification sent"});
+
             }
 
             catch (Exception ex) 
             {
+                Console.WriteLine(ex.ToString());
                 // Nếu có lỗi trong quá trình xử lý, trả về mã lỗi 500
-                return StatusCode(500, new { message = "Failed to send recovery information"});
+                return StatusCode(500, new { message = $"Failed to send recovery information: {ex.Message}"});
             }
             finally
             {
