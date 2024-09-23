@@ -142,4 +142,4 @@ EmailService.cs
 .vs
 
 # launch setting
-launchSetting.json
+Properties/launchSettings.json
