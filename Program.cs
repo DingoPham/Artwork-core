@@ -1,4 +1,3 @@
-
 using ArtworkCore.Services;
 using ArtworkCore.Services.DBconnect;
 
@@ -41,9 +40,13 @@ namespace ArtworkCore
 
             builder.Services.AddSingleton<EmailService>();
 
+            builder.Services.AddScoped<JwtService>();
+
             var app = builder.Build();
 
             app.UseCors("AllowAllOrigins");
+
+            app.UseRouting();
 
             app.UseAuthorization();
 
