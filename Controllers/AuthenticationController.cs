@@ -13,6 +13,7 @@ using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace ArtworkCore.Controllers
 {
@@ -76,7 +77,7 @@ namespace ArtworkCore.Controllers
                     return Unauthorized(new { loginMessage = "Invalid username or password" });
                 }
 
-                string token = _jwtService.GenerateJwtToken(request.UserName);
+                string token = _jwtService.GenerateJwtToken(request.UserName, dt.Rows[0]["role"].ToString());
 
                 return Ok(new
                 {
@@ -102,13 +103,6 @@ namespace ArtworkCore.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            if (string.IsNullOrEmpty(request.Email) ||
-            string.IsNullOrEmpty(request.Username) ||
-            string.IsNullOrEmpty(request.Password) ||
-            request.Age <= 0)
-            {
-                return BadRequest(new { registerMessage = "All fields are required and age must be greater than 0" });
-            }
             DataTable dt = new();
             List<NpgsqlParameter> list_param = new();
             NpgsqlConnection _connect = _db_action.Connection();
@@ -123,7 +117,7 @@ namespace ArtworkCore.Controllers
                 list_param.Add(_db_action.ParamMaker("email", request.Email, DbType.String));
                 list_param.Add(_db_action.ParamMaker("username", request.Username, DbType.String));
                 list_param.Add(_db_action.ParamMaker("password", request.Password, DbType.String));
-                list_param.Add(_db_action.ParamMaker("age", request.Age, DbType.Int16));
+                list_param.Add(_db_action.ParamMaker("age", request.Age, DbType.Date));
                 list_param.Add(_db_action.ParamMaker("role", request.Role, DbType.String));
 
                 string query = $"INSERT INTO master.account (id, email, username, password, age, role) VALUES (:id, :email, :username, :password, :age, :role);";

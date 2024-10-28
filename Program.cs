@@ -1,5 +1,12 @@
+using ArtworkCore.Class;
+using ArtworkCore.FilterAttribute;
 using ArtworkCore.Services;
 using ArtworkCore.Services.DBconnect;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System.Data.Common;
+using System.Text;
 
 namespace ArtworkCore
 {
@@ -16,38 +23,61 @@ namespace ArtworkCore
                                     reloadOnChange: true);
             });
 
-            PostgresSQL_Connection db_connect = new PostgresSQL_Connection(builder.Configuration["DBconnect"]);
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"])),
+                        ValidateIssuerSigningKey = true,
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        ValidateLifetime = false,
+                    };
+                });
 
             builder.Services.AddControllers();
 
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowAllOrigins",
+                options.AddPolicy("AllowSpecificOrigin",
                 builder =>
                 {
-                    builder.AllowAnyOrigin()
+                    string[] list_cors = new string[] { "http://localhost:8080" };
+                    builder.WithOrigins(list_cors)
                            .AllowAnyHeader()
-                           .AllowAnyMethod();
+                           .AllowAnyMethod()
+                           .AllowCredentials();
                 });
             });
 
+            PostgresSQL_Connection db_connect = new PostgresSQL_Connection(builder.Configuration["DBconnect"]);
             builder.Services.AddScoped<IPostgresSQL_Connection>(container =>
             {
                 return db_connect;
             });
 
             builder.Services.AddScoped<ArtworkCore.Services.EmailService>();
-
+            builder.Services.AddScoped<ArtworkCore.Class.AgeCaculator>();
             builder.Services.AddSingleton<EmailService>();
-
+            builder.Services.AddSingleton<AgeCaculator>();
             builder.Services.AddScoped<JwtService>();
+            builder.Services.AddScoped(container =>
+            {
+                return new CustomFilter();
+            });
 
             var app = builder.Build();
 
-            app.UseCors("AllowAllOrigins");
+            app.UseCors("AllowSpecificOrigin");
 
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllers();

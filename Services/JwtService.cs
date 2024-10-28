@@ -15,10 +15,10 @@ namespace ArtworkCore.Services
         }
 
         #region Generate login token
-        public string GenerateJwtToken(string username)
+        public string GenerateJwtToken(string username, string role)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:SecretKey"]);
+            var key = Encoding.UTF8.GetBytes(_configuration["Jwt:SecretKey"]);
 
             if (key == null || key.Length == 0)
             {
@@ -29,9 +29,10 @@ namespace ArtworkCore.Services
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-                    new Claim("username", username)
+                    new Claim("username", username),
+                    new Claim(ClaimTypes.Role, role)
                 }),
-                Expires = DateTime.UtcNow.AddHours(1),
+                Expires = DateTime.UtcNow.AddDays(2),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
             var token = tokenHandler.CreateToken(tokenDescriptor);

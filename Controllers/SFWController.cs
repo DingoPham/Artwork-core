@@ -9,10 +9,13 @@ using Npgsql;
 using System.Data;
 using System.Text;
 using ArtworkCore.Services;
+using ArtworkCore.FilterAttribute;
 
 namespace ArtworkCore.Controllers
 {
     [ApiController]
+    [ServiceFilter(typeof(CustomFilter))]
+    [Authorize]
     [Route("[controller]")]
     public class SFWController : ControllerBase
     {
@@ -103,7 +106,7 @@ namespace ArtworkCore.Controllers
                         list_param.Add(_db_action.ParamMaker("img_name", sfw_art.ImgName, DbType.String));
                         list_param.Add(_db_action.ParamMaker("img_describe", sfw_art.ImgDescribe, DbType.String));
 
-                        string sfw_art_query = $"INSERT INTO  master.sfw_art (id, img_url, img_name, img_describe)VALUES(:id, :img_url, :img_name, :img_describe);";
+                        string sfw_art_query = $"INSERT INTO master.sfw_art (id, img_url, img_name, img_describe)VALUES(:id, :img_url, :img_name, :img_describe);";
                         using (NpgsqlCommand cmd = new NpgsqlCommand(sfw_art_query, _connect))
                         {
                             foreach (NpgsqlParameter param in list_param)

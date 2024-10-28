@@ -9,21 +9,27 @@ using Npgsql;
 using System.Data;
 using System.Text;
 using ArtworkCore.Services;
+using ArtworkCore.FilterAttribute;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace ArtworkCore.Controllers
 {
     [ApiController]
+    [ServiceFilter(typeof(CustomFilter))]
+    [Authorize]
     [Route("[controller]")]
     public class VideoController : ControllerBase
     {
         private readonly ILogger<VideoController> _logger;
         private IConfiguration _configuration;
         private IPostgresSQL_Connection _db_action;
-        public VideoController(ILogger<VideoController> logger, IConfiguration configuration, IPostgresSQL_Connection db_action)
+        private readonly AgeCaculator _ageCaculator;
+        public VideoController(ILogger<VideoController> logger, IConfiguration configuration, IPostgresSQL_Connection db_action, AgeCaculator ageCaculator)
         {
             _db_action = db_action;
             _configuration = configuration;
             _logger = logger;
+            _ageCaculator = ageCaculator;
         }
 
         #region Get
@@ -31,46 +37,86 @@ namespace ArtworkCore.Controllers
         [Authorize(Roles = "admin,user")]
         public IActionResult Get()
         {
+            string username = User.Claims.FirstOrDefault(_ => _.Type == "username").Value;
+
+            DateTime userAge = DateTime.MinValue;
+            try
+            {
+                using (NpgsqlConnection _connect = _db_action.Connection())
+                {
+                    _connect.Open();
+
+                    string query = "SELECT age FROM master.account WHERE username = :Username";
+                    using (NpgsqlCommand cmd = new(query, _connect))
+                    {
+                        cmd.Parameters.Add(new NpgsqlParameter("Username", NpgsqlTypes.NpgsqlDbType.Text)
+                        {
+                            Value = username
+                        });
+                        using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                userAge = reader.GetDateTime(0);
+                            }
+                            else
+                            {
+                                return Unauthorized(new { authMessage = "User not found!" });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching user age");
+                return StatusCode(500, "Internal server error");
+            }
+
+            int userBirth = _ageCaculator.CalculateAge(userAge);
+            // Check if the user is at least 18 years old
+            if (userBirth < 18)
+            {
+                return BadRequest(new { ageMessage = "You must be at least 18 years old to access this content!" });
+            }
+
             DataTable dt = new();
             List<Video> list_data_video = new();
 
-            if (!User.Identity.IsAuthenticated)
-            {
-                return Unauthorized(new { message = "You need to sign in to gain access to here!" });
-            }
-
             try
             {
-                NpgsqlConnection _connect = _db_action.Connection();
-
-                _connect.Open();
-
-                string query = $"SELECT * FROM master.video;";
-                dt = new();
-                using (NpgsqlCommand cmd = new NpgsqlCommand(query, _connect))
+                using (NpgsqlConnection _connect = _db_action.Connection())
                 {
-                    NpgsqlDataReader dataReader = cmd.ExecuteReader();
-                    dt.Load(dataReader);
-                }
-                list_data_video = (from rw in dt.AsEnumerable()
-                                     select new Video()
-                                     {
-                                         Id = Convert.ToString(rw["id"]),
-                                         VideoUrl = Convert.ToString(rw["video_url"]),
-                                         VideoName = Convert.ToString(rw["video_name"]),
-                                         VideoDescribe = Convert.ToString(rw["video_describe"]),
-                                         VideoType = Convert.ToString(rw["video_type"]),
-                                     }).ToList();
-                _connect.Close();
-                _connect.Dispose();
-            }
-            catch (Exception ex) { }
+                    _connect.Open();
 
-            var list_total = new
+                    string query = $"SELECT * FROM master.video;";
+                    dt = new DataTable();
+                    using (NpgsqlCommand cmd = new NpgsqlCommand(query, _connect))
+                    {
+                        NpgsqlDataReader dataReader = cmd.ExecuteReader();
+                        dt.Load(dataReader);
+                    }
+                    list_data_video = (from rw in dt.AsEnumerable()
+                                         select new Video()
+                                         {
+                                             Id = Convert.ToString(rw["id"]),
+                                             VideoUrl = Convert.ToString(rw["video_url"]),
+                                             VideoName = Convert.ToString(rw["video_name"]),
+                                             VideoDescribe = Convert.ToString(rw["video_describe"])
+                                         }).ToList();
+                }
+                var list_total = new
+                {
+                    list_data_video = list_data_video
+                };
+                return Ok(list_total);
+
+            }
+            catch (Exception ex)
             {
-                list_data_video = list_data_video
-            };
-            return Ok(list_total);
+                _logger.LogError(ex, "Error fetching NSFW art");
+                return StatusCode(500, "Internal server error");
+            }
         }
         #endregion
 
@@ -102,9 +148,8 @@ namespace ArtworkCore.Controllers
                         list_param.Add(_db_action.ParamMaker("video_url", video.VideoUrl, DbType.String));
                         list_param.Add(_db_action.ParamMaker("video_name", video.VideoName, DbType.String));
                         list_param.Add(_db_action.ParamMaker("video_describe", video.VideoDescribe, DbType.String));
-                        list_param.Add(_db_action.ParamMaker("video_type", video.VideoType, DbType.String));
 
-                        string video_query = $"INSERT INTO master.video (id, video_url, video_name, video_describe, video_type)VALUES(:id, :video_url, null, null, :video_type);";
+                        string video_query = $"INSERT INTO master.video (id, video_url, video_name, video_describe)VALUES(:id, :video_url, :video_name, :video_describe);";
                         using (NpgsqlCommand cmd = new NpgsqlCommand(video_query, _connect))
                         {
                             foreach (NpgsqlParameter param in list_param)
@@ -114,7 +159,7 @@ namespace ArtworkCore.Controllers
                             cmd.ExecuteNonQuery();
                         }
 
-                        message = "Insert video successfully";
+                        message = "Insert image successfully";
                         break;
 
                     default:
@@ -125,7 +170,7 @@ namespace ArtworkCore.Controllers
             }
             catch (Exception ex)
             {
-                message = "Insert video failed\n\r" + ex;
+                message = "Insert image failed\n\r" + ex;
                 return StatusCode(500, new { message });
             }
             return Ok(new { message, id = newImageId });
@@ -153,9 +198,8 @@ namespace ArtworkCore.Controllers
                         list_param.Add(_db_action.ParamMaker("video_url", video.VideoUrl, DbType.String));
                         list_param.Add(_db_action.ParamMaker("video_name", video.VideoName, DbType.String));
                         list_param.Add(_db_action.ParamMaker("video_describe", video.VideoDescribe, DbType.String));
-                        list_param.Add(_db_action.ParamMaker("video_type", video.VideoType, DbType.String));
 
-                        string video_query = $"UPDATE master.video SET video_url = :video_url, video_name = :video_name, video_describe = :video_describe, video_type = :video_type WHERE id = :id;";
+                        string video_query = $"UPDATE master.video SET video_url = :video_url, video_name = :video_name, video_describe = :video_describe WHERE id = :id;";
                         using (NpgsqlCommand cmd = new NpgsqlCommand(video_query, _connect))
                         {
                             foreach (NpgsqlParameter param in list_param)
@@ -165,7 +209,7 @@ namespace ArtworkCore.Controllers
                             cmd.ExecuteNonQuery();
                         }
 
-                        message = "Update video successfully";
+                        message = "Update image successfully";
                         break;
                 }
 
@@ -173,7 +217,7 @@ namespace ArtworkCore.Controllers
             }
             catch (Exception ex)
             {
-                message = "Update video failed\n\r" + ex;
+                message = "Update image failed\n\r" + ex;
                 return StatusCode(500, new { message });
             }
 
@@ -210,7 +254,7 @@ namespace ArtworkCore.Controllers
                             cmd.ExecuteNonQuery();
                         }
 
-                        message = "Delete video successfully";
+                        message = "Delete image successfully";
                         break;
                 }
 
@@ -218,7 +262,7 @@ namespace ArtworkCore.Controllers
             }
             catch (Exception ex)
             {
-                message = "Insert video failed\n\r" + ex;
+                message = "Insert image failed\n\r" + ex;
             }
 
             return Ok(message);
