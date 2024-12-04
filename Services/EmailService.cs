@@ -1,6 +1,7 @@
 ﻿using System.Net.Mail;
 using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 
 namespace ArtworkCore.Services
 {
@@ -15,10 +16,11 @@ namespace ArtworkCore.Services
         {
             // Cấu hình từ biến môi trường
             _smtpHost = configuration["SMTP:Host"];
-            _smtpPort = int.Parse(configuration["SMTP:Port"]);
+            _smtpPort = int.Parse(configuration["SMTP:Port"] ?? "587");
             _smtpUser = configuration["SMTP:User"];
             _smtpPassword = configuration["SMTP:Password"];
         }
+
 
         public async Task SendAsync(string toEmail, string subject, string body)
         {
