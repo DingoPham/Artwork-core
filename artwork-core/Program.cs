@@ -42,16 +42,16 @@ namespace ArtworkCore
 
             builder.Services.AddControllers();
 
+            var list_cors = builder.Configuration["ListHost"].Split(";");
+
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowSpecificOrigin",
                 builder =>
                 {
-                    string[] list_cors = new string[] { "http://localhost:8080", "https://artwork-site-3l77.onrender.com" };
                     builder.WithOrigins(list_cors)
                            .AllowAnyHeader()
-                           .AllowAnyMethod()
-                           .AllowCredentials();
+                           .AllowAnyMethod();
                 });
             });
 

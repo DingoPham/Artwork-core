@@ -1,0 +1,21 @@
+version: "3.7"
+
+services:
+  artwork-core:
+    restart: unless-stopped
+    container_name: artwork-core
+    image: artwork-core
+    ports:
+      - "51223:80"
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+      #restart_policy:
+      #  condition: any
+      #  delay: 5s
+      #  max_attempts: 1
+      #  window: 1s
