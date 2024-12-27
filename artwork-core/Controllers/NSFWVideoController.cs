@@ -159,7 +159,7 @@ namespace ArtworkCore.Controllers
                             cmd.ExecuteNonQuery();
                         }
 
-                        message = "Insert image successfully";
+                        message = "Insert video successfully";
                         break;
 
                     default:
@@ -170,7 +170,7 @@ namespace ArtworkCore.Controllers
             }
             catch (Exception ex)
             {
-                message = "Insert image failed\n\r" + ex;
+                message = "Insert video failed\n\r" + ex;
                 return StatusCode(500, new { message });
             }
             return Ok(new { message, id = newImageId });
@@ -192,15 +192,15 @@ namespace ArtworkCore.Controllers
                 _connect.Open();
                 switch (request.Type.ToLower())
                 {
-                    case "nsfw_video":
-                        var nsfw_video = JsonConvert.DeserializeObject<NsfwVideo>(request.Data.ToString());
+                    case "nsfwvideo":
+                        var nsfwvideo = JsonConvert.DeserializeObject<NsfwVideo>(request.Data.ToString());
                         list_param.Add(_db_action.ParamMaker("id", id, DbType.String));
-                        list_param.Add(_db_action.ParamMaker("nsfw_video_url", nsfw_video.NsfwVideoUrl, DbType.String));
-                        list_param.Add(_db_action.ParamMaker("nsfw_video_name", nsfw_video.NsfwVideoName, DbType.String));
-                        list_param.Add(_db_action.ParamMaker("nsfw_video_describe", nsfw_video.NsfwVideoDescribe, DbType.String));
+                        list_param.Add(_db_action.ParamMaker("nsfw_video_url", nsfwvideo.NsfwVideoUrl, DbType.String));
+                        list_param.Add(_db_action.ParamMaker("nsfw_video_name", nsfwvideo.NsfwVideoName, DbType.String));
+                        list_param.Add(_db_action.ParamMaker("nsfw_video_describe", nsfwvideo.NsfwVideoDescribe, DbType.String));
 
-                        string video_query = $"UPDATE master.video SET nsfw_video_url = :nsfw_video_url, nsfw_video_name = :nsfw_video_name, nsfw_video_describe = :nsfw_video_describe WHERE id = :id;";
-                        using (NpgsqlCommand cmd = new NpgsqlCommand(video_query, _connect))
+                        string nsfw_video_query = $"UPDATE master.nsfwvideo SET nsfw_video_url = :nsfw_video_url, nsfw_video_name = :nsfw_video_name, nsfw_video_describe = :nsfw_video_describe WHERE id = :id;";
+                        using (NpgsqlCommand cmd = new NpgsqlCommand(nsfw_video_query, _connect))
                         {
                             foreach (NpgsqlParameter param in list_param)
                             {
@@ -209,7 +209,7 @@ namespace ArtworkCore.Controllers
                             cmd.ExecuteNonQuery();
                         }
 
-                        message = "Update image successfully";
+                        message = "Update video successfully";
                         break;
                 }
 
@@ -217,7 +217,7 @@ namespace ArtworkCore.Controllers
             }
             catch (Exception ex)
             {
-                message = "Update image failed\n\r" + ex;
+                message = "Update video failed\n\r" + ex;
                 return StatusCode(500, new { message });
             }
 
@@ -240,12 +240,12 @@ namespace ArtworkCore.Controllers
                 _connect.Open();
                 switch (request.Type.ToLower())
                 {
-                    case "nsfw_video":
-                        var nsfw_video = JsonConvert.DeserializeObject<NsfwVideo>(request.Data.ToString());
-                        list_param.Add(_db_action.ParamMaker("id", nsfw_video.Id, DbType.String));
+                    case "nsfwvideo":
+                        var nsfwvideo = JsonConvert.DeserializeObject<NsfwVideo>(request.Data.ToString());
+                        list_param.Add(_db_action.ParamMaker("id", nsfwvideo.Id, DbType.String));
 
-                        string video_query = $"DELETE FROM master.nsfwvideo WHERE id = :id;";
-                        using (NpgsqlCommand cmd = new NpgsqlCommand(video_query, _connect))
+                        string nsfw_video_query = $"DELETE FROM master.nsfwvideo WHERE id = :id;";
+                        using (NpgsqlCommand cmd = new NpgsqlCommand(nsfw_video_query, _connect))
                         {
                             foreach (NpgsqlParameter param in list_param)
                             {
@@ -254,7 +254,7 @@ namespace ArtworkCore.Controllers
                             cmd.ExecuteNonQuery();
                         }
 
-                        message = "Delete image successfully";
+                        message = "Delete video successfully";
                         break;
                 }
 
@@ -262,7 +262,7 @@ namespace ArtworkCore.Controllers
             }
             catch (Exception ex)
             {
-                message = "Insert image failed\n\r" + ex;
+                message = "Delete video failed\n\r" + ex;
             }
 
             return Ok(message);

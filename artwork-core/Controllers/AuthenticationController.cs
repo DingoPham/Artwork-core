@@ -188,7 +188,7 @@ namespace ArtworkCore.Controllers
 
                 string baseUrl = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development"
                     ? "http://localhost:8080"
-                    : "https://exemple.com";
+                    : "https://artwork-site-3l77.onrender.com";
         
                 // Nếu tìm thấy email, tạo một token khôi phục mật khẩu
                 string resetToken = _jwtService.GenerateResetToken(request.Email);

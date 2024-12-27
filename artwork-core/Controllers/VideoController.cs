@@ -159,7 +159,7 @@ namespace ArtworkCore.Controllers
                             cmd.ExecuteNonQuery();
                         }
 
-                        message = "Insert image successfully";
+                        message = "Insert video successfully";
                         break;
 
                     default:
@@ -209,7 +209,7 @@ namespace ArtworkCore.Controllers
                             cmd.ExecuteNonQuery();
                         }
 
-                        message = "Update image successfully";
+                        message = "Update video successfully";
                         break;
                 }
 
@@ -217,7 +217,7 @@ namespace ArtworkCore.Controllers
             }
             catch (Exception ex)
             {
-                message = "Update image failed\n\r" + ex;
+                message = "Update video failed\n\r" + ex;
                 return StatusCode(500, new { message });
             }
 
@@ -254,7 +254,7 @@ namespace ArtworkCore.Controllers
                             cmd.ExecuteNonQuery();
                         }
 
-                        message = "Delete image successfully";
+                        message = "Delete video successfully";
                         break;
                 }
 
@@ -262,7 +262,7 @@ namespace ArtworkCore.Controllers
             }
             catch (Exception ex)
             {
-                message = "Insert image failed\n\r" + ex;
+                message = "Delete video failed\n\r" + ex;
             }
 
             return Ok(message);
