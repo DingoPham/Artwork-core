@@ -20,6 +20,12 @@ namespace ArtworkCore.Services
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_configuration["Jwt:SecretKey"]);
 
+            var claims = new List<Claim>
+            {
+                    new Claim("username", Convert.ToBase64String(Encoding.UTF8.GetBytes(username))),
+                    new Claim(ClaimTypes.Role, role)
+            };
+
             if (key == null || key.Length == 0)
             {
                 throw new Exception("JWT Secret Key is not configured.");
@@ -27,11 +33,7 @@ namespace ArtworkCore.Services
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim("username", username),
-                    new Claim(ClaimTypes.Role, role)
-                }),
+                Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddDays(2),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
