@@ -37,7 +37,8 @@ namespace ArtworkCore.Controllers
         [Authorize(Roles = "admin,user")]
         public IActionResult Get()
         {
-            string username = User.Claims.FirstOrDefault(_ => _.Type == "username").Value;
+            string encodedUsername = User.Claims.FirstOrDefault(_ => _.Type == "username")?.Value;
+            string username = Encoding.UTF8.GetString(Convert.FromBase64String(encodedUsername));
 
             DateTime userAge = DateTime.MinValue;
             try
