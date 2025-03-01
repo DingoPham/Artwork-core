@@ -161,7 +161,7 @@ namespace ArtworkCore.Controllers
                             cmd.ExecuteNonQuery();
                         }
 
-                        message = "Insert video successfully";
+                        message = "Insert image successfully";
                         break;
 
                     default:
@@ -172,7 +172,7 @@ namespace ArtworkCore.Controllers
             }
             catch (Exception ex)
             {
-                message = "Insert video failed\n\r" + ex;
+                message = "Insert image failed\n\r" + ex;
                 return StatusCode(500, new { message });
             }
             return Ok(new { message, id = newImageId });
@@ -211,7 +211,7 @@ namespace ArtworkCore.Controllers
                             cmd.ExecuteNonQuery();
                         }
 
-                        message = "Update video successfully";
+                        message = "Update image successfully";
                         break;
                 }
 
@@ -219,7 +219,7 @@ namespace ArtworkCore.Controllers
             }
             catch (Exception ex)
             {
-                message = "Update video failed\n\r" + ex;
+                message = "Update image failed\n\r" + ex;
                 return StatusCode(500, new { message });
             }
 
@@ -256,7 +256,7 @@ namespace ArtworkCore.Controllers
                             cmd.ExecuteNonQuery();
                         }
 
-                        message = "Delete video successfully";
+                        message = "Delete image successfully";
                         break;
                 }
 
@@ -264,7 +264,7 @@ namespace ArtworkCore.Controllers
             }
             catch (Exception ex)
             {
-                message = "Insert video failed\n\r" + ex;
+                message = "Insert image failed\n\r" + ex;
             }
 
             return Ok(message);
@@ -288,13 +288,11 @@ namespace ArtworkCore.Controllers
                     return BadRequest("Danh sách ảnh không hợp lệ");
                 }
 
-                // Cập nhật thứ tự cho từng ảnh trong danh sách
                 using (NpgsqlCommand cmd = new NpgsqlCommand())
                 {
                     cmd.Connection = _connect;
                     cmd.CommandType = CommandType.Text;
 
-                    // Chuẩn bị câu lệnh SQL để cập nhật từng bản ghi
                     StringBuilder queryBuilder = new StringBuilder();
                     List<NpgsqlParameter> parameters = new List<NpgsqlParameter>();
 
