@@ -57,14 +57,6 @@ namespace ArtworkCore.Controllers
                                         ImgDescribe = Convert.ToString(rw["img_describe"]),
                                         Order = Convert.ToInt32(rw["order"])
                                     }).ToList();
-
-                //query = $"SELECT * FROM master.nsfw_art;";
-                //dt = new();
-                //using (NpgsqlCommand cmd = new NpgsqlCommand(query, _connect))
-                //{
-                //    NpgsqlDataReader dataReader = cmd.ExecuteReader();
-                //    dt.Load(dataReader);
-                //}
                 _connect.Close();
                 _connect.Dispose();
             }

@@ -90,7 +90,7 @@ namespace ArtworkCore.Controllers
                 {
                     _connect.Open();
 
-                    string query = $"SELECT * FROM master.video;";
+                    string query = $"SELECT * FROM master.video ORDER BY \"order\" ASC;";
                     dt = new DataTable();
                     using (NpgsqlCommand cmd = new NpgsqlCommand(query, _connect))
                     {
@@ -103,7 +103,8 @@ namespace ArtworkCore.Controllers
                                              Id = Convert.ToString(rw["id"]),
                                              VideoUrl = Convert.ToString(rw["video_url"]),
                                              VideoName = Convert.ToString(rw["video_name"]),
-                                             VideoDescribe = Convert.ToString(rw["video_describe"])
+                                             VideoDescribe = Convert.ToString(rw["video_describe"]),
+                                             Order = Convert.ToInt32(rw["order"]),
                                          }).ToList();
                 }
                 var list_total = new
@@ -269,5 +270,62 @@ namespace ArtworkCore.Controllers
             return Ok(message);
         }
         #endregion
+
+        #region Order
+        [HttpPut("order")]
+        [Authorize(Roles = "admin")]
+        public IActionResult Order([FromBody] OrderRequest request)
+        {
+            string message = string.Empty;
+            NpgsqlConnection _connect = _db_action.Connection();
+
+            try
+            {
+                _connect.Open();
+
+                if (request.Videos == null || !request.Videos.Any())
+                {
+                    return BadRequest("Danh sách ảnh không hợp lệ");
+                }
+
+                // Cập nhật thứ tự cho từng ảnh trong danh sách
+                using (NpgsqlCommand cmd = new NpgsqlCommand())
+                {
+                    cmd.Connection = _connect;
+                    cmd.CommandType = CommandType.Text;
+
+                    // Chuẩn bị câu lệnh SQL để cập nhật từng bản ghi
+                    StringBuilder queryBuilder = new StringBuilder();
+                    List<NpgsqlParameter> parameters = new List<NpgsqlParameter>();
+
+                    for (int i = 0; i < request.Videos.Count; i++)
+                    {
+                        var video = request.Videos[i];
+                        queryBuilder.Append($"UPDATE master.video SET \"order\" = @order{i} WHERE id = @id{i};");
+                        parameters.Add(new NpgsqlParameter($"@order{i}", i));
+                        parameters.Add(new NpgsqlParameter($"@id{i}", video.Id));
+                    }
+
+                    cmd.CommandText = queryBuilder.ToString();
+                    cmd.Parameters.AddRange(parameters.ToArray());
+                    cmd.ExecuteNonQuery();
+                }
+
+                message = "Cập nhật thứ tự video thành công";
+                _connect.Close();
+            }
+            catch (Exception ex)
+            {
+                message = "Cập nhật thứ tự video thất bại\n\r" + ex.Message;
+                return StatusCode(500, new { message });
+            }
+            finally
+            {
+                _connect.Dispose();
+            }
+
+            return Ok(new { message });
+        }
+        #endregion 
     }
 }

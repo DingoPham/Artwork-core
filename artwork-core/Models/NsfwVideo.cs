@@ -7,5 +7,6 @@
         public string NsfwVideoName { get; set; } = "";
         public string NsfwVideoDescribe { get; set; } = "";
         public string NsfwVideoType { get; set; }
+        public int Order { get; set; }
     }
 }
