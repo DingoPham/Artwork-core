@@ -274,7 +274,7 @@ namespace ArtworkCore.Controllers
         #region Order
         [HttpPut("order")]
         [Authorize(Roles = "admin")]
-        public IActionResult Order([FromBody] OrderRequest request)
+        public IActionResult Order([FromBody] VideoOrderRequest request)
         {
             string message = string.Empty;
             NpgsqlConnection _connect = _db_action.Connection();
