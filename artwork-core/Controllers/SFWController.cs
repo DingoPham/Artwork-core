@@ -42,7 +42,7 @@ namespace ArtworkCore.Controllers
 
                 _connect.Open();
 
-                string query = $"SELECT * FROM master.sfw_art;";
+                string query = $"SELECT * FROM master.sfw_art ORDER BY \"order\" ASC;";
                 using (NpgsqlCommand cmd = new NpgsqlCommand(query, _connect))
                 {
                     NpgsqlDataReader dataReader = cmd.ExecuteReader();
@@ -227,7 +227,7 @@ namespace ArtworkCore.Controllers
         }
         #endregion
 
-        #region
+        #region Order
         [HttpPut("order")]
         [Authorize(Roles = "admin")]
         public IActionResult Order([FromBody] OrderRequest request)
@@ -282,6 +282,6 @@ namespace ArtworkCore.Controllers
 
             return Ok(new { message });
         }
-        #endregion
+        #endregion 
     }
 }
