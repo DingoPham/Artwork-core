@@ -6,5 +6,6 @@
         public string ImgUrl { get; set; }
         public string ImgName { get; set; } = "";
         public string ImgDescribe { get; set; } = "";
+        public int Order { get; set; }
     }
 }

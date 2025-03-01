@@ -54,20 +54,24 @@ namespace ArtworkCore.Controllers
                                         Id = Convert.ToString(rw["id"]),
                                         ImgUrl = Convert.ToString(rw["img_url"]),
                                         ImgName = Convert.ToString(rw["img_name"]),
-                                        ImgDescribe = Convert.ToString(rw["img_describe"])
+                                        ImgDescribe = Convert.ToString(rw["img_describe"]),
+                                        Order = Convert.ToInt32(rw["order"])
                                     }).ToList();
 
-                query = $"SELECT * FROM master.nsfw_art;";
-                dt = new();
-                using (NpgsqlCommand cmd = new NpgsqlCommand(query, _connect))
-                {
-                    NpgsqlDataReader dataReader = cmd.ExecuteReader();
-                    dt.Load(dataReader);
-                }
+                //query = $"SELECT * FROM master.nsfw_art;";
+                //dt = new();
+                //using (NpgsqlCommand cmd = new NpgsqlCommand(query, _connect))
+                //{
+                //    NpgsqlDataReader dataReader = cmd.ExecuteReader();
+                //    dt.Load(dataReader);
+                //}
                 _connect.Close();
                 _connect.Dispose();
             }
-            catch (Exception ex) { }
+            catch (Exception ex) 
+            {
+                _logger.LogError(ex, "Error fetching SFW art");
+            }
 
             var list_total = new
             {
@@ -220,6 +224,63 @@ namespace ArtworkCore.Controllers
             }
 
             return Ok(message);
+        }
+        #endregion
+
+        #region
+        [HttpPut("order")]
+        [Authorize(Roles = "admin")]
+        public IActionResult Order([FromBody] OrderRequest request)
+        {
+            string message = string.Empty;
+            NpgsqlConnection _connect = _db_action.Connection();
+
+            try
+            {
+                _connect.Open();
+
+                if (request.Images == null || !request.Images.Any())
+                {
+                    return BadRequest("Danh sách ảnh không hợp lệ");
+                }
+
+                // Cập nhật thứ tự cho từng ảnh trong danh sách
+                using (NpgsqlCommand cmd = new NpgsqlCommand())
+                {
+                    cmd.Connection = _connect;
+                    cmd.CommandType = CommandType.Text;
+
+                    // Chuẩn bị câu lệnh SQL để cập nhật từng bản ghi
+                    StringBuilder queryBuilder = new StringBuilder();
+                    List<NpgsqlParameter> parameters = new List<NpgsqlParameter>();
+
+                    for (int i = 0; i < request.Images.Count; i++)
+                    {
+                        var image = request.Images[i];
+                        queryBuilder.Append($"UPDATE master.sfw_art SET \"order\" = @order{i} WHERE id = @id{i}; ");
+                        parameters.Add(new NpgsqlParameter($"@order{i}", i));
+                        parameters.Add(new NpgsqlParameter($"@id{i}", image.Id));
+                    }
+
+                    cmd.CommandText = queryBuilder.ToString();
+                    cmd.Parameters.AddRange(parameters.ToArray());
+                    cmd.ExecuteNonQuery();
+                }
+
+                message = "Cập nhật thứ tự ảnh thành công";
+                _connect.Close();
+            }
+            catch (Exception ex)
+            {
+                message = "Cập nhật thứ tự ảnh thất bại\n\r" + ex.Message;
+                return StatusCode(500, new { message });
+            }
+            finally
+            {
+                _connect.Dispose();
+            }
+
+            return Ok(new { message });
         }
         #endregion
     }
